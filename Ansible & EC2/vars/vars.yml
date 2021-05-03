@@ -1,0 +1,7 @@
+---
+# Variables required from Ansible Job Template:
+# your_fancy_secret: comes From Job Template Credentials
+
+# Main Variables
+your_aws_cred: "{{ lookup('aws_secret', '{{ your_fancy__secret }}', region='us-east-1') }}"
+

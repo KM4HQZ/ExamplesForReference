@@ -1,0 +1,21 @@
+# Get Account Variables
+
+    - name: Gather Caller Info
+      aws_caller_info:
+        aws_access_key: "{{ your_aws_cred.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ your_aws_cred.AWS_SECRET_ACCESS_KEY }}"
+        region: "{{ region }}"
+      register: caller_info
+
+    - name: Include Variables depending on account
+      include_vars:
+        file: "vars/{{ caller_info.account_alias }}.yml"
+
+    - name: Set Application Name
+      set_fact:
+        ApplicationName: "{{ AppName}}"
+
+    - name: Set other variables based on Application Name
+      set_fact:
+        KmsKeyId: "alias/{{ ReferencedNameForKey }}-EBS-Key"
+        #stack_name: "{{ ApplicationName }}-Build"

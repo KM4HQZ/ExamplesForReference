@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Provision EC2 Instance to use to manage AWS AD Domain
+
+Parameters:
+  AMIID:
+    Description: The latest Windows Server 2019 AMI ID
+    Type: AWS::EC2::Image::Id
+  InstanceType:
+    Description: The Instance Type for the new EC2 Instance
+    Type: String
+    Default: m1.small
+  SubnetID:
+    Description: A subnet within the selected VPC to place the EC2 Instance
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroupIDs:
+    Description: The IDs of the required Security Groups
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  InstanceName:
+    Description: New Name for the Windows Server
+    Type: String
+  Domain:
+    Description: AWS Active Directory Domain to add the EC2 Instance
+    Type: String
+  DomainUser:
+    Description: Domain User with permissions to add a server to the domain
+    Type: String
+  DomainUserPW:
+    Description: Password for account with permissions to add system to the domain
+    Type: String
+    NoEcho: true
+  OU:
+    Description: Organisational Unit path
+    Type: String
+  KmsKeyId: 
+    Description: KMS Key to use for Amazon EBS encryption.
+    Type: String
+  PrimaryDNS:
+    Description: Primary DNS Server for the Domain
+    Type: String
+  SecondaryDNS:
+    Description: Secondary DNS Server for the Domain
+    Type: String
+
+Resources:
+  MSDirectoryEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AMIID
+      InstanceType: !Ref InstanceType
+      KeyName: YourKeyNameHere
+      SecurityGroupIds: !Ref SecurityGroupIDs
+      SubnetId: !Ref SubnetID
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            DeleteOnTermination: true
+            VolumeSize: 50
+            Encrypted: true
+            KmsKeyId: !Ref KmsKeyId
+      UserData:
+        Fn::Base64:
+          !Sub |
+          <powershell>
+          New-Item -ItemType Directory -Path C:\Admin
+          Start-Transcript -Path C:\Admin\BuildTranscript.txt
+
+          $Domain = "${Domain}"
+          $NewServerName = "${InstanceName}"
+          $DomainUser = "${DomainUser}@${Domain}"
+          $DomainUserPW = "${DomainUserPW}" | ConvertTo-SecureString -asPlainText -Force
+          $DomainUserCred = New-Object System.Management.Automation.PSCredential($DomainUser,$DomainUserPW)
+          $PrimaryDNS = "${PrimaryDNS}"
+          $SecondaryDNS = "${SecondaryDNS}"
+          $ExistingDNS = (Get-NetAdapter | Get-DnsClientServerAddress -AddressFamily IPv4).ServerAddresses
+          $OU = "${OU}"
+
+          Get-NetAdapter | Set-DnsClient -ConnectionSpecificSuffix "${Domain}"
+          Get-NetAdapter | Set-DnsClientServerAddress -ServerAddresses $PrimaryDNS, $SecondaryDNS, $ExistingDNS
+
+          Add-WindowsFeature -Name RSAT-AD-Tools, RSAT-DNS-Server
+          Add-Computer -Domain $Domain -NewName $NewServerName -Credential $DomainUserCred -OUPath $OU -Restart
+
+          Stop-Transcript
+          </powershell>
+Outputs:
+  InstanceID:
+    Description: "Instance ID of the newly created EC2 Instance."
+    Value: !Ref MSDirectoryEC2
+  PrivateDnsName:
+    Description: The private DNS name of the specified instance.
+    Value: !GetAtt MSDirectoryEC2.PrivateDnsName
+  PrivateIp:
+    Description: The private IP address of the specified instance.
+    Value: !GetAtt MSDirectoryEC2.PrivateIp
+
+...

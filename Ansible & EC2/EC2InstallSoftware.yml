@@ -1,0 +1,58 @@
+---
+- name: play 1
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+    - name: set credential facts
+      set_fact:
+        cred_fact: "{{ lookup('aws_secret', '{{ your_fancy_secret }}', region='us-east-1') }}"
+
+    - name: Gather information about any instance with a tag key Name and value Example
+      ec2_instance_info:
+        aws_access_key: "{{ cred_fact.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ cred_fact.AWS_SECRET_ACCESS_KEY }}"
+        region: "{{ region }}"
+        filters:
+          "tag:Name": "{{ Instance_Name }}"
+      register: instance_info
+
+    - name: add host
+      add_host: 
+        name: "{{ instance_info.instances[0].private_ip_address }}"
+        groups: just_created
+
+#####
+- name: play 2
+  hosts: just_created
+  gather_facts: no
+  vars_files:
+   - vault.yml
+  vars:
+    ansible_connection: psrp
+    ansible_port: 5985
+    ansible_psrp_protocol: http
+    ansible_psrp_ignore_proxy: yes
+  
+  tasks:
+
+  - name: Ensure software Directory is present
+    win_file:
+      path: C:\Admin\software\
+      state: directory
+
+  - name: Download the software package
+    win_get_url:
+      url: https://yadda.yadda.yadda.msi
+      dest: C:\Admin\software\yadda.msi
+
+  - name: Ensure software is installed via win_command
+    win_command: C:\Windows\System32\msiexec.exe /i C:\Admin\software\yadda.msi /qn /norestart
+    
+  - name: Remove software package
+    win_file:
+      path: C:\Admin\software\
+      state: absent
+
+...

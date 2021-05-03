@@ -1,0 +1,38 @@
+---
+# https://docs.ansible.com/ansible/latest/collections/community/windows/win_domain_group_membership_module.html#ansible-collections-community-windows-win-domain-group-membership-module
+- name: play 1
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+    - name: add host
+      add_host: 
+        name: "{{InstanceName}}"  
+        groups: just_created
+
+- name: play 2
+  hosts: just_created
+  gather_facts: yes
+  vars_files:
+    - vars/vault.yml
+
+  vars:
+
+    ansible_connection: psrp
+    ansible_port: 5985
+    ansible_psrp_protocol: http
+    ansible_psrp_ignore_proxy: yes
+    ansible_psrp_auth: kerberos #required for negotiate, and therefore remote ad 
+    ansible_psrp_negotiate_delegate: yes #only works when kerberos is used. Solves double hop issue.
+  
+  tasks:
+
+    - name: Add a computer to a domain group
+      win_domain_group_membership:
+        name: "{{DomainGroup}}"
+        members:
+          - "{{InstanceName}}$"
+        state: present
+
+...

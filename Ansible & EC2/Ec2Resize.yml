@@ -1,0 +1,47 @@
+---
+- hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+    - name: set credential facts
+      set_fact:
+        cred_fact: "{{ lookup('aws_secret', '{{ your_fancy_secret }}', region='us-east-1') }}"
+
+    - name: Gather facts about "{{ InstanceName }}"
+      ec2_instance_info:
+        aws_access_key: "{{ cred_fact.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ cred_fact.AWS_SECRET_ACCESS_KEY  }}"
+        region: "{{ region }}"
+        filters:
+          "tag:Name": "{{ InstanceName }}"
+      register: ec2
+
+    - name: Stop the instance
+      ec2:
+        aws_access_key: "{{ cred_fact.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ cred_fact.AWS_SECRET_ACCESS_KEY  }}"
+        region: "{{ region }}"    
+        state: 'stopped'
+        instance_ids: "{{ ec2.instances[0].instance_id }}"
+        wait: yes
+
+    - name: Resize the instance
+      command: aws ec2 modify-instance-attribute --instance-id "{{ ec2.instances[0].instance_id }}" --instance-type "{{ instance_type }}" --output json
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ cred_fact.AWS_ACCESS_KEY_ID }}"
+        AWS_SECRET_ACCESS_KEY: "{{ cred_fact.AWS_SECRET_ACCESS_KEY }}"
+        AWS_DEFAULT_REGION: "{{ region }}"
+      delegate_to: localhost
+
+    - name: Start the instance
+      ec2: 
+        aws_access_key: "{{ cred_fact.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ cred_fact.AWS_SECRET_ACCESS_KEY  }}"
+        region: "{{ region }}"
+        instance_ids: "{{ ec2.instances[0].instance_id }}"
+        state: running
+        wait: True
+   
+    
+...

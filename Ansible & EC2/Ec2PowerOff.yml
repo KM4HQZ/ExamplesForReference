@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: set fact
+      set_fact:
+        one_fact: "{{ lookup('aws_secret', '{{ your_secret }}', region='us-east-1') }}"
+    - name: PowerOff
+      ec2:
+        aws_access_key: "{{ one_fact.AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ one_fact.AWS_SECRET_ACCESS_KEY }}"
+        region: us-east-1
+        instance_tags:
+            PowerSchedule: "{{ tag_value }}"
+        state: stopped
+...
