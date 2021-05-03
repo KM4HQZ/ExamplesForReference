@@ -1,4 +1,4 @@
-Welcome to my example repo for Warner's consideration.
+Welcome to my example repo for your consideration.
 =========
 
 I have herein, two folders containing code demonstrating some Ansible/YAML/JSON/aws-cli/CloudFormation and another folder deomstrating some raw PowerShell. You may notice that some files, variables, and references are missing. 
