@@ -1,1 +1,0 @@
-MicrosoftADPW: "{{ vault_MicrosoftADPWProd }}" # From an encrypted Vault
